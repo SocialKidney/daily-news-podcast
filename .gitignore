@@ -1,0 +1,20 @@
+# Environment variables & secrets (CRITICAL: NEVER COMMIT)
+.env
+.env.local
+
+# Output files, audio recordings, HTML archives, and logs
+output/
+*.mp3
+*.wav
+*.log
+
+# Python cache & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/

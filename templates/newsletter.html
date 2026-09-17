@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Briefing &amp; Podcast - {{ date }}</title>
+  <style>
+    /* Reset & Base Styles */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    img {
+      border: 0;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #f8fafc;
+      padding: 30px 10px;
+    }
+    .main {
+      background-color: #ffffff;
+      margin: 0 auto;
+      max-width: 640px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      color: #ffffff;
+      padding: 36px 32px 28px;
+      text-align: left;
+    }
+    .header-badge {
+      display: inline-block;
+      background-color: rgba(255, 255, 255, 0.15);
+      color: #93c5fd;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      margin: 0 0 8px 0;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.25;
+      color: #ffffff;
+    }
+    .header-date {
+      color: #cbd5e1;
+      font-size: 14px;
+      margin: 0;
+    }
+    .podcast-banner {
+      background-color: #eff6ff;
+      border-left: 4px solid #2563eb;
+      margin: 24px 32px 10px;
+      padding: 16px 20px;
+      border-radius: 6px;
+    }
+    .podcast-banner h3 {
+      margin: 0 0 4px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e40af;
+      display: flex;
+      align-items: center;
+    }
+    .podcast-banner p {
+      margin: 0;
+      font-size: 13px;
+      color: #3b82f6;
+    }
+    .content {
+      padding: 10px 32px 32px;
+    }
+    .editorial-lead {
+      font-size: 15px;
+      color: #475569;
+      margin: 16px 0 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #f1f5f9;
+      font-style: italic;
+    }
+    .tier-section {
+      margin-bottom: 32px;
+    }
+    .tier-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .tier-pill {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+    .pill-edmonton {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    .pill-alberta {
+      background-color: #e0e7ff;
+      color: #3730a3;
+    }
+    .pill-canada {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    .pill-world {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    .tier-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+    }
+    .story-card {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      transition: all 0.2s ease;
+    }
+    .story-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+    .story-headline {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin: 0 0 8px 0;
+      color: #0f172a;
+    }
+    .story-headline a {
+      color: #0f172a;
+      text-decoration: none;
+    }
+    .story-headline a:hover {
+      color: #2563eb;
+    }
+    .story-context {
+      font-size: 14px;
+      color: #334155;
+      line-height: 1.55;
+      margin: 0 0 12px 0;
+    }
+    .story-meta {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .story-source {
+      font-weight: 600;
+      color: #475569;
+    }
+    .story-link {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .story-link:hover {
+      text-decoration: underline;
+    }
+    .footer {
+      background-color: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 24px 32px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .footer p {
+      margin: 4px 0;
+    }
+    @media only screen and (max-width: 600px) {
+      .main {
+        border-radius: 0;
+        border: none;
+      }
+      .header {
+        padding: 24px 20px 20px;
+      }
+      .podcast-banner {
+        margin: 16px 20px 8px;
+        padding: 12px 16px;
+      }
+      .content {
+        padding: 8px 20px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="main">
+      <!-- Header -->
+      <div class="header">
+        <span class="header-badge">Daily Intelligence</span>
+        <h1>Daily Briefing &amp; Podcast</h1>
+        <p class="header-date">Edmonton &bull; Alberta &bull; Canada &bull; World &mdash; {{ date }}</p>
+      </div>
+
+      <!-- Podcast Announcement Banner -->
+      <div class="podcast-banner">
+        <h3>&#127911; Daily 10-Minute Audio Briefing Attached</h3>
+        <p>Your conversational podcast episode has been synthesized and attached as an MP3 file ({{ podcast_filename|default("podcast.mp3") }}). Listen on the go!</p>
+      </div>
+
+      <!-- Main Content -->
+      <div class="content">
+        {% if summary_lead %}
+        <div class="editorial-lead">
+          {{ summary_lead }}
+        </div>
+        {% endif %}
+
+        <!-- Edmonton Section -->
+        {% if edmonton %}
+        <div class="tier-section">
+          <div class="tier-header">
+            <span class="tier-pill pill-edmonton">Local</span>
+            <h2 class="tier-title">Edmonton Metro</h2>
+          </div>
+          {% for story in edmonton %}
+          <div class="story-card">
+            <h3 class="story-headline">
+              <a href="{{ story.link }}" target="_blank">{{ story.headline }}</a>
+            </h3>
+            <p class="story-context">{{ story.context }}</p>
+            <div class="story-meta">
+              <span class="story-source">{{ story.source }}</span>
+              <a href="{{ story.link }}" target="_blank" class="story-link">Read Full Story &rarr;</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Alberta Section -->
+        {% if alberta %}
+        <div class="tier-section">
+          <div class="tier-header">
+            <span class="tier-pill pill-alberta">Provincial</span>
+            <h2 class="tier-title">Alberta</h2>
+          </div>
+          {% for story in alberta %}
+          <div class="story-card">
+            <h3 class="story-headline">
+              <a href="{{ story.link }}" target="_blank">{{ story.headline }}</a>
+            </h3>
+            <p class="story-context">{{ story.context }}</p>
+            <div class="story-meta">
+              <span class="story-source">{{ story.source }}</span>
+              <a href="{{ story.link }}" target="_blank" class="story-link">Read Full Story &rarr;</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Canada Section -->
+        {% if canada %}
+        <div class="tier-section">
+          <div class="tier-header">
+            <span class="tier-pill pill-canada">National</span>
+            <h2 class="tier-title">Canada</h2>
+          </div>
+          {% for story in canada %}
+          <div class="story-card">
+            <h3 class="story-headline">
+              <a href="{{ story.link }}" target="_blank">{{ story.headline }}</a>
+            </h3>
+            <p class="story-context">{{ story.context }}</p>
+            <div class="story-meta">
+              <span class="story-source">{{ story.source }}</span>
+              <a href="{{ story.link }}" target="_blank" class="story-link">Read Full Story &rarr;</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- World Section -->
+        {% if world %}
+        <div class="tier-section">
+          <div class="tier-header">
+            <span class="tier-pill pill-world">Global</span>
+            <h2 class="tier-title">World Affairs</h2>
+          </div>
+          {% for story in world %}
+          <div class="story-card">
+            <h3 class="story-headline">
+              <a href="{{ story.link }}" target="_blank">{{ story.headline }}</a>
+            </h3>
+            <p class="story-context">{{ story.context }}</p>
+            <div class="story-meta">
+              <span class="story-source">{{ story.source }}</span>
+              <a href="{{ story.link }}" target="_blank" class="story-link">Read Full Story &rarr;</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>Curated automatically every morning at 7:00 AM Mountain Time.</p>
+        <p>Powered by Google Gemini &bull; Audio synthesis via Gemini TTS</p>
+        <p>&copy; {{ date.split()[-1] if date else "2026" }} Daily Briefing Service. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
