@@ -93,40 +93,42 @@ def sanitize_text_for_tts(text: str) -> str:
     return cleaned.strip()
 
 
-def chunk_script_for_tts(text: str, max_words: int = 250) -> List[str]:
+def chunk_script_for_tts(text: str, max_words: int = 280) -> List[str]:
     """
-    Split a script into natural chunks (sentences/paragraphs) that fit TTS API limits.
-    Keeps paragraphs and complete sentences together.
+    Split script into natural paragraph and topic chunks so that synthesis
+    and audio stitching occur cleanly between stories rather than mid-thought.
     """
     clean_text = sanitize_text_for_tts(text)
     paragraphs = [p.strip() for p in clean_text.split("\n\n") if p.strip()]
 
     chunks: List[str] = []
-    current_chunk: List[str] = []
-    current_word_count = 0
 
     for paragraph in paragraphs:
-        # Split paragraph into sentences
-        sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+        words = paragraph.split()
+        if len(words) <= max_words:
+            chunks.append(paragraph)
+        else:
+            # Break large paragraph at natural sentence boundaries
+            sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+            current_chunk: List[str] = []
+            current_word_count = 0
 
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence:
-                continue
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if not sentence:
+                    continue
 
-            sentence_words = len(sentence.split())
+                sentence_words = len(sentence.split())
+                if current_word_count + sentence_words > max_words and current_chunk:
+                    chunks.append(" ".join(current_chunk))
+                    current_chunk = [sentence]
+                    current_word_count = sentence_words
+                else:
+                    current_chunk.append(sentence)
+                    current_word_count += sentence_words
 
-            # If adding this sentence exceeds max_words and we already have content, yield chunk
-            if current_word_count + sentence_words > max_words and current_chunk:
+            if current_chunk:
                 chunks.append(" ".join(current_chunk))
-                current_chunk = [sentence]
-                current_word_count = sentence_words
-            else:
-                current_chunk.append(sentence)
-                current_word_count += sentence_words
-
-    if current_chunk:
-        chunks.append(" ".join(current_chunk))
 
     return chunks
 
@@ -145,15 +147,25 @@ def pcm_to_wav_bytes(
 
 
 def stitch_audio_segments(
-    audio_segments: List[AudioSegment], pause_ms: int = 350
+    audio_segments: List[AudioSegment], pause_ms: int = 300, fade_ms: int = 40
 ) -> AudioSegment:
-    """Concatenate multiple AudioSegment objects with a brief acoustic pause."""
+    """
+    Seamlessly stitch audio segments with smooth micro-fades and natural pause
+    to eliminate digital clipping, clicks, and abrupt transitions.
+    """
     if not audio_segments:
         return AudioSegment.empty()
 
     pause = AudioSegment.silent(duration=pause_ms)
-    combined = audio_segments[0]
-    for seg in audio_segments[1:]:
+    
+    # Apply soft fade-in/fade-out to avoid pop/clicks at chunk boundaries
+    processed_segments = [
+        seg.fade_in(fade_ms).fade_out(fade_ms) if len(seg) > (fade_ms * 2) else seg
+        for seg in audio_segments
+    ]
+
+    combined = processed_segments[0]
+    for seg in processed_segments[1:]:
         combined = combined + pause + seg
 
     return combined

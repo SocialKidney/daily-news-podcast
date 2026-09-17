@@ -40,7 +40,7 @@ jobs:
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
           TIMEZONE: "America/Edmonton"
           SCHEDULE_TIME: "07:00"
-          TTS_ENGINE: ${{ vars.TTS_ENGINE || 'gtts' }}
+          TTS_ENGINE: ${{ vars.TTS_ENGINE || 'gemini' }}
           VOICE_NAME: "Kore"
           TARGET_PODCAST_WORDS: "1400"
         run: |
