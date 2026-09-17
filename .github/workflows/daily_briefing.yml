@@ -7,9 +7,17 @@ on:
     - cron: '0 13 * * *'
   workflow_dispatch: # Allows manual on-demand trigger from GitHub UI
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   run-daily-briefing:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -45,6 +53,30 @@ jobs:
           TARGET_PODCAST_WORDS: "1400"
         run: |
           python main.py --run-now
+
+      - name: Publish Podcast Episode to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date +'%Y%m%d')
+          TAG="v${DATE}"
+          MP3_FILE=$(ls output/podcast_*.mp3 2>/dev/null | head -n 1 || true)
+          if [ -n "$MP3_FILE" ] && [ -f "$MP3_FILE" ]; then
+            gh release delete "$TAG" --yes 2>/dev/null || true
+            gh release create "$TAG" "$MP3_FILE" --title "PodCOW 2: Daily Briefing - $DATE" --notes "Daily News Podcast for Edmonton, Alberta, Canada and World"
+          fi
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'public/'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Upload Artifacts (HTML & Podcast Audio)
         if: always()

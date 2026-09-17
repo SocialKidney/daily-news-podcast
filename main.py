@@ -12,6 +12,7 @@ from config import config
 from collectors.news_collector import NewsCollector
 from generators.llm_pipeline import LLMPipeline
 from generators.tts_synthesizer import TTSSynthesizer
+from generators.podcast_feed import PodcastFeedManager
 from deliverers.mailer import Mailer
 
 # Configure logging
@@ -97,8 +98,23 @@ def run_pipeline(dry_run: bool = False, stories_per_tier: int = 3) -> bool:
         else:
             raise
 
-    # Step 4: Email Delivery
-    logger.info("--- Step 4: Rendering & Delivering Daily Briefing ---")
+    # Step 4: Update Podcast RSS Feed for Pocket Casts & Podcast Apps
+    logger.info("--- Step 4: Updating Podcast RSS Feed for Pocket Casts ---")
+    feed_mgr = PodcastFeedManager(feed_path=Path("public/podcast.xml"))
+    filesize = mp3_path.stat().st_size if (mp3_path and mp3_path.exists()) else 0
+    duration_secs = int((word_count / 145) * 60)
+    feed_path = feed_mgr.add_or_update_episode(
+        date_str=date_display,
+        datestamp=datestamp,
+        mp3_filename=mp3_path.name if mp3_path else f"podcast_{datestamp}.mp3",
+        mp3_filesize=filesize,
+        duration_seconds=duration_secs,
+        summary_html=newsletter_data.get("summary_lead", ""),
+    )
+    logger.info("Podcast RSS feed updated at: %s", feed_path)
+
+    # Step 5: Email Delivery
+    logger.info("--- Step 5: Rendering & Delivering Daily Briefing ---")
     mailer = Mailer()
     delivery_success = mailer.send_daily_briefing(
         newsletter_data=newsletter_data,
@@ -115,6 +131,7 @@ def run_pipeline(dry_run: bool = False, stories_per_tier: int = 3) -> bool:
     if mp3_path and mp3_path.exists():
         print(f"  - Podcast Audio: {mp3_path} ({mp3_path.stat().st_size / (1024*1024):.2f} MB)")
     print(f"  - Newsletter HTML: {config.output_dir / f'newsletter_{datestamp}.html'}")
+    print(f"  - Pocket Casts Feed: https://socialkidney.github.io/daily-news-podcast/podcast.xml")
     print("=" * 65 + "\n")
 
     return delivery_success

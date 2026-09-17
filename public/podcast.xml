@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+  <channel>
+    <title>PodCOW 2 - Daily News Edmonton</title>
+    <link>https://socialkidney.github.io/daily-news-podcast</link>
+    <language>en-ca</language>
+    <itunes:author>Dr. Nikhil Shah</itunes:author>
+    <description>Your automated 10-minute morning intelligence briefing covering Edmonton Local, Alberta Provincial, Canada National, and Global News.</description>
+    <itunes:summary>Your automated 10-minute morning intelligence briefing covering Edmonton Local, Alberta Provincial, Canada National, and Global News.</itunes:summary>
+    <itunes:image href="https://socialkidney.github.io/daily-news-podcast/assets/cover.jpg"/>
+    <itunes:category text="News">
+      <itunes:category text="Daily News"/>
+    </itunes:category>
+    <itunes:explicit>no</itunes:explicit>
+    <item>
+      <title>PodCOW 2: Daily Briefing - Thursday, September 17, 2026</title>
+      <description>Today's curated morning briefing covering Edmonton Local, Alberta Provincial, Canada National, and Global News.</description>
+      <guid isPermaLink="false">podcow-edmonton-20260917</guid>
+      <pubDate>Thu, 17 Sep 2026 23:21:24 +0000</pubDate>
+      <enclosure url="https://github.com/SocialKidney/daily-news-podcast/releases/download/v20260917/podcast_20260917.mp3" length="9773996" type="audio/mpeg"/>
+      <itunes:duration>12:30</itunes:duration>
+      <itunes:explicit>no</itunes:explicit>
+      <itunes:author>Dr. Nikhil Shah</itunes:author>
+    </item>
+  </channel>
+</rss>
