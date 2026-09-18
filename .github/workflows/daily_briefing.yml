@@ -60,7 +60,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          DATE=$(date +'%Y%m%d')
+          DATE=$(TZ="America/Edmonton" date +'%Y%m%d')
           TAG="v${DATE}"
           MP3_FILES=$(ls output/*.mp3 2>/dev/null || true)
           if [ -n "$MP3_FILES" ]; then
