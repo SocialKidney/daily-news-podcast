@@ -32,6 +32,30 @@ def test_sanitize_text_for_tts():
     assert "*crucial*" not in cleaned
 
 
+def test_sanitize_banned_phrases_and_phonetics():
+    sample_text = (
+        "Good morning! I am Dr. Nikhil Shah, and today we cover AI advancements in healthcare. "
+        "First on our radar: New NHL trade rumors are circulating. "
+        "The post Oilers update appeared first on CityNews. "
+        "This represents an important operational and strategic signal across the industry. "
+        "Furthermore, GPUs and LLMs are scaling rapidly."
+    )
+    cleaned = sanitize_text_for_tts(sample_text)
+
+    # Asserts Dr Nikhil Shah is never mentioned
+    assert "Nikhil Shah" not in cleaned
+    assert "Dr." not in cleaned
+    # Asserts filler phrases are removed
+    assert "First on our radar" not in cleaned
+    assert "operational and strategic signal" not in cleaned
+    assert "appeared first on" not in cleaned
+    # Asserts acronyms have periods for distinct TTS phonetic pronunciation
+    assert "A.I." in cleaned
+    assert "N.H.L." in cleaned
+    assert "G.P.U.s" in cleaned
+    assert "L.L.M.s" in cleaned
+
+
 def test_chunk_script_for_tts():
     # Construct a script with 600 words
     sentences = [

@@ -26,6 +26,31 @@ def test_fallback_podcast_script_length_and_flow():
     assert "2026" in script
 
 
+def test_all_shows_fallback_no_banned_phrases():
+    from config import config
+    collector = NewsCollector()
+    pipeline = LLMPipeline(api_key="")
+
+    for show_key, show in config.shows.items():
+        stories = {
+            tier: collector._get_fallback_stories(tier, count=2)
+            for tier in show.tiers
+        }
+        script = pipeline.generate_podcast_script(
+            stories, date_str="Thursday, September 17, 2026", show=show
+        )
+        # Verify no self-intro of Dr. Nikhil Shah
+        assert "Nikhil Shah" not in script
+        assert "First on our radar" not in script
+        # Check Oilers coach grounding in fallback
+        if show.prompt_type == "oilers_hockey":
+            assert "Kris Knoblauch" in script
+            assert "Babcock" not in script
+        # Check AI pronunciation dots in AI show fallback
+        if show.prompt_type == "global_ai":
+            assert "A.I." in script
+
+
 def test_mailer_render_html_and_text():
     mailer = Mailer()
     newsletter_data = {

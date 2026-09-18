@@ -161,6 +161,9 @@ class NewsCollector:
         text = re.sub(r"<(?:br|p|div|hr)[^>]*>", " ", raw_html, flags=re.IGNORECASE)
         clean = re.sub(r"<[^>]+>", "", text)
         clean = html.unescape(clean)
+        # Remove WordPress and news aggregator boilerplate
+        clean = re.sub(r"The post .*? appeared (?:first on )?.*", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\[&#8230;\]|\[\.\.\.\]", "", clean)
         clean = re.sub(r"\s+([.,!?:;])", r"\1", clean)
         clean = re.sub(r"\s+", " ", clean).strip()
         return clean
@@ -232,7 +235,14 @@ class NewsCollector:
         ]
 
         candidates = recent_stories if len(recent_stories) >= max_count else stories
-        return candidates[:max_count]
+        filtered: List[NewsStory] = []
+        for s in candidates:
+            title_lower = s.title.lower()
+            # Filter out archival reprints or misleading historical references
+            if "babcock" in title_lower and ("oilers" in title_lower or s.tier in ("oilers", "edmonton")):
+                continue
+            filtered.append(s)
+        return filtered[:max_count]
 
     def _get_fallback_stories(self, tier: str, count: int) -> List[NewsStory]:
         """Provide fallback stories if RSS feeds are unreachable."""

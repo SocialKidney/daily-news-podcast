@@ -83,8 +83,41 @@ def sanitize_text_for_tts(text: str) -> str:
     cleaned = re.sub(r"^\s*[-*+]\s+", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"^\s*>\s+", "", cleaned, flags=re.MULTILINE)
 
-    # Replace URLs with spoken reference
+    # Replace URLs with empty string
     cleaned = re.sub(r"https?://\S+", "", cleaned)
+
+    # Remove banned phrases and accidental self-intros
+    cleaned = re.sub(r"(?i)\b(?:I am|This is|I'm)\s+(?:Dr\.?\s+)?Nikhil\s+Shah,?\s*(?:and\s+)?", "", cleaned)
+    cleaned = re.sub(r"(?i)\b(?:Dr\.?\s+)?Nikhil\s+Shah\b", "", cleaned)
+    cleaned = re.sub(r"(?i)\b(?:First\s+on\s+our\s+radar|On\s+our\s+radar)\s*:\s*", "", cleaned)
+    cleaned = re.sub(r"(?i)\bThis represents an important operational and strategic signal[^.\n]*\.", "", cleaned)
+    cleaned = re.sub(r"(?i)\bThe post .*? appeared(?: first on)? [^.\n]*", "", cleaned)
+
+    # Phonetic expansion for common acronyms so TTS pronounces letters rather than words
+    # 'AI' is often mispronounced as 'eye' without periods
+    cleaned = re.sub(r"\bAI\b", "A.I.", cleaned)
+    cleaned = re.sub(r"\bAi\b", "A.I.", cleaned)
+    cleaned = re.sub(r"\bLLMs\b", "L.L.M.s", cleaned)
+    cleaned = re.sub(r"\bLLM\b", "L.L.M.", cleaned)
+    cleaned = re.sub(r"\bGPUs\b", "G.P.U.s", cleaned)
+    cleaned = re.sub(r"\bGPU\b", "G.P.U.", cleaned)
+    cleaned = re.sub(r"\bNHLs\b", "N.H.L.s", cleaned)
+    cleaned = re.sub(r"\bNHL\b", "N.H.L.", cleaned)
+    cleaned = re.sub(r"\bLRT\b", "L.R.T.", cleaned)
+    cleaned = re.sub(r"\bCBC\b", "C.B.C.", cleaned)
+    cleaned = re.sub(r"\bCTV\b", "C.T.V.", cleaned)
+    cleaned = re.sub(r"\bTSMC\b", "T.S.M.C.", cleaned)
+    cleaned = re.sub(r"\bASIC\b", "A.S.I.C.", cleaned)
+    cleaned = re.sub(r"\bASICs\b", "A.S.I.C.s", cleaned)
+    cleaned = re.sub(r"\bFDA\b", "F.D.A.", cleaned)
+    cleaned = re.sub(r"\bAPIs\b", "A.P.I.s", cleaned)
+    cleaned = re.sub(r"\bAPI\b", "A.P.I.", cleaned)
+    cleaned = re.sub(r"\bACA\b", "A.C.A.", cleaned)
+    cleaned = re.sub(r"\bEU\b", "E.U.", cleaned)
+    cleaned = re.sub(r"\bUN\b", "U.N.", cleaned)
+    cleaned = re.sub(r"\bUS\b", "U.S.", cleaned)
+    cleaned = re.sub(r"\bCEO\b", "C.E.O.", cleaned)
+    cleaned = re.sub(r"\bCEOs\b", "C.E.O.s", cleaned)
 
     # Clean multiple consecutive spaces and newlines
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
