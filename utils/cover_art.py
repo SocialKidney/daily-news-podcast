@@ -7,17 +7,33 @@ from PIL import Image, ImageDraw, ImageFont
 
 def _get_fonts():
     """Helper to safely load system fonts or fallback to default."""
-    try:
-        font_title = ImageFont.truetype("arialbd.ttf", 130)
-        font_sub = ImageFont.truetype("arialbd.ttf", 62)
-        font_tag = ImageFont.truetype("arial.ttf", 36)
-        font_badge = ImageFont.truetype("arialbd.ttf", 30)
-    except Exception:
-        font_title = ImageFont.load_default()
-        font_sub = font_title
-        font_tag = font_title
-        font_badge = font_title
-    return font_title, font_sub, font_tag, font_badge
+    candidates_bold = ["DejaVuSans-Bold.ttf", "arialbd.ttf", "LiberationSans-Bold.ttf"]
+    candidates_reg = ["DejaVuSans.ttf", "arial.ttf", "LiberationSans-Regular.ttf"]
+    font_title, font_sub, font_tag, font_badge = None, None, None, None
+
+    for f in candidates_bold:
+        try:
+            font_title = ImageFont.truetype(f, 130)
+            font_sub = ImageFont.truetype(f, 62)
+            font_badge = ImageFont.truetype(f, 30)
+            break
+        except Exception:
+            continue
+
+    for f in candidates_reg:
+        try:
+            font_tag = ImageFont.truetype(f, 36)
+            break
+        except Exception:
+            continue
+
+    default_font = ImageFont.load_default()
+    return (
+        font_title or default_font,
+        font_sub or default_font,
+        font_tag or default_font,
+        font_badge or default_font,
+    )
 
 
 def generate_edmonton_cover(output_path: Path = Path("public/assets/cover.jpg")) -> Path:
