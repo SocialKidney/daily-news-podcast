@@ -61,10 +61,10 @@ class AppConfig:
         default_factory=lambda: os.getenv("SCHEDULE_TIME", "07:00").strip()
     )
     tts_engine: str = field(
-        default_factory=lambda: os.getenv("TTS_ENGINE", "gemini").strip().lower()
+        default_factory=lambda: os.getenv("TTS_ENGINE", "edge").strip().lower()
     )
     default_voice_name: str = field(
-        default_factory=lambda: os.getenv("VOICE_NAME", "Kore").strip()
+        default_factory=lambda: os.getenv("VOICE_NAME", "en-CA-LiamNeural").strip()
     )
     target_podcast_words: int = field(
         default_factory=lambda: int(os.getenv("TARGET_PODCAST_WORDS", "1400"))
@@ -93,7 +93,7 @@ class AppConfig:
                 ),
                 category="News",
                 subcategory="Daily News",
-                voice_name="Kore",
+                voice_name="en-CA-LiamNeural",
                 feed_filename="podcast.xml",
                 episodes_filename="episodes.json",
                 cover_filename="cover.jpg",
@@ -131,7 +131,7 @@ class AppConfig:
                 ),
                 category="Sports",
                 subcategory="Hockey",
-                voice_name="Puck",
+                voice_name="en-US-ChristopherNeural",
                 feed_filename="oilers.xml",
                 episodes_filename="episodes_oilers.json",
                 cover_filename="cover_oilers.jpg",
@@ -164,7 +164,7 @@ class AppConfig:
                 ),
                 category="Technology",
                 subcategory="Artificial Intelligence",
-                voice_name="Aoede",
+                voice_name="en-US-AriaNeural",
                 feed_filename="ai.xml",
                 episodes_filename="episodes_ai.json",
                 cover_filename="cover_ai.jpg",

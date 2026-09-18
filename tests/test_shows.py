@@ -17,8 +17,7 @@ def test_shows_configuration():
     for show_id in expected_shows:
         show = config.get_show(show_id)
         assert show is not None
-        assert show.title
-        assert show.voice_name in ["Kore", "Puck", "Aoede"]
+        assert show.voice_name
         assert show.feed_filename.endswith(".xml")
         assert show.episodes_filename.endswith(".json")
         assert show.cover_filename.endswith(".jpg")

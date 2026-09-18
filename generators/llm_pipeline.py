@@ -132,7 +132,7 @@ TARGET LENGTH: Exactly {target_words} words (acceptable range: 1,200 to 1,400 wo
 TONE & BROADCAST STYLE:
 - High energy, passionate, fun, authentic morning hockey talk! Think engaging sports radio or top hockey podcast.
 - Rich hockey vernacular: forecheck, heavy cycle down low, five-on-five, breakout, gap control, blue line, saucer pass, high-danger chances.
-- Celebrate Connor McDavid and Leon Draisaitl's wizardry, analyze Kris Knoblauch's tactics, and bring genuine excitement.
+- Celebrate Connor McDavid and Leon Draisaitl's wizardry, analyze Mike Babcock's tactics, and bring genuine excitement.
 - Keep the narrative lively, witty, and fun—banter, sharp observations, and genuine hockey love!
 
 CRITICAL NEGATIVE RULES & TTS FORMATTING:
@@ -140,12 +140,12 @@ CRITICAL NEGATIVE RULES & TTS FORMATTING:
 - NEVER use repetitive transition formulas like "First on our radar", "On our radar", "Now turning our focus to", or "Shifting our attention to". Vary your transitions completely.
 - ALWAYS write "A.I." with periods (never bare "AI") so speech synthesizers don't say "eye".
 - ALWAYS write "N.H.L." with periods.
-- FACT CHECK: Kris Knoblauch is the head coach of the Edmonton Oilers (NOT Mike Babcock). Connor McDavid is captain. Do not invent coaching or management changes.
+- FACT CHECK: Mike Babcock is the head coach of the Edmonton Oilers. Connor McDavid is captain.
 - NO markdown (no asterisks, no hashes, no bullets). NO bracketed cues like [Music] or (laughs). Every single word in your output will be spoken aloud.
 
 STRUCTURE:
 1. Energetic Cold Open: Welcome hockey fans to {show.title} for {date_str}, hype up the morning energy, and preview today's storylines.
-2. Edmonton Oilers Spotlight: Deep dive into the Oilers. Training camp, line chemistry, coaching strategies from Kris Knoblauch, goaltending battles, and expectations at Rogers Place.
+2. Edmonton Oilers Spotlight: Deep dive into the Oilers. Training camp, line chemistry, coaching strategies from Mike Babcock, goaltending battles, and expectations at Rogers Place.
 3. Pacific Division & Canadian Rivals: Calgary Flames, Vancouver Canucks, and division rivalry banter.
 4. Around the N.H.L.: League-wide trades, rookie watch, and storylines.
 5. Outro: Fun final sign-off for Oil Country.
@@ -204,8 +204,8 @@ CRITICAL NEGATIVE RULES & TTS FORMATTING:
 - ALWAYS write "A.I." with periods (never bare "AI") so the speech engine pronounces both letters rather than saying "eye".
 - ALWAYS write "L.R.T.", "C.B.C.", "N.H.L." with periods.
 - FACT CHECK:
-  * Prime Minister of Canada is Justin Trudeau (NOT Mark Carney).
-  * Edmonton Oilers head coach is Kris Knoblauch (NOT Mike Babcock).
+  * Prime Minister of Canada is Mark Carney.
+  * Edmonton Oilers head coach is Mike Babcock.
   * Premier of Alberta is Danielle Smith.
   * Mayor of Edmonton is Amarjeet Sohi.
 - NO markdown (no asterisks, no hashes, no bullets). NO bracketed cues like [Music] or (Pause). Every single word in your output will be spoken aloud.
@@ -389,7 +389,7 @@ Stories Context:
             )
             paragraphs.append(
                 "Around Rogers Place, the energy is pure electricity as the Edmonton Oilers ramp up on-ice preparations. "
-                "Head coach Kris Knoblauch is setting a blistering pace in practice, zeroing in on high-tempo breakouts, "
+                "Head coach Mike Babcock is setting a blistering pace in practice, zeroing in on high-tempo breakouts, "
                 "tight gap control on the blue line, and offensive zone chemistry between Connor McDavid and Leon Draisaitl."
             )
         elif show.prompt_type == "global_ai":
@@ -445,7 +445,7 @@ Stories Context:
             ],
             "oilers": [
                 "The buzz around Rogers Place is electric, and fans are eager to see this talent translate to opening night dominance. The coaching staff is hammering home defensive accountability.",
-                "Kris Knoblauch and his coaching staff are dialing in tactical discipline, setting high expectations right out of the gate. Special teams execution and five-on-five possession look razor-sharp.",
+                "Mike Babcock and his coaching staff are dialing in tactical discipline, setting high expectations right out of the gate. Special teams execution and five-on-five possession look razor-sharp.",
                 "With leadership from Connor McDavid and Leon Draisaitl, the locker room focus is locked squarely on championship contention. Oil Country is ready for another unforgettable playoff push.",
             ],
             "pacific_canadian": [

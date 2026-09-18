@@ -44,8 +44,7 @@ def test_all_shows_fallback_no_banned_phrases():
         assert "First on our radar" not in script
         # Check Oilers coach grounding in fallback
         if show.prompt_type == "oilers_hockey":
-            assert "Kris Knoblauch" in script
-            assert "Babcock" not in script
+            assert "Mike Babcock" in script
         # Check AI pronunciation dots in AI show fallback
         if show.prompt_type == "global_ai":
             assert "A.I." in script

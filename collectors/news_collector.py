@@ -235,14 +235,7 @@ class NewsCollector:
         ]
 
         candidates = recent_stories if len(recent_stories) >= max_count else stories
-        filtered: List[NewsStory] = []
-        for s in candidates:
-            title_lower = s.title.lower()
-            # Filter out archival reprints or misleading historical references
-            if "babcock" in title_lower and ("oilers" in title_lower or s.tier in ("oilers", "edmonton")):
-                continue
-            filtered.append(s)
-        return filtered[:max_count]
+        return candidates[:max_count]
 
     def _get_fallback_stories(self, tier: str, count: int) -> List[NewsStory]:
         """Provide fallback stories if RSS feeds are unreachable."""

@@ -52,6 +52,13 @@ class TTSSynthesizer:
             datestamp = date_str or datetime.now().strftime("%Y%m%d")
             output_path = config.output_dir / f"podcast_{datestamp}.mp3"
 
+        # If edge-tts engine is selected (default), synthesize with Edge Neural TTS
+        if config.tts_engine in ("edge", "edgetts"):
+            try:
+                return self._synthesize_script_edge(script_text, output_path)
+            except Exception as e:
+                logger.warning("edge-tts failed (%s). Falling back to chunked synthesis.", e)
+
         # Split script into manageable natural speech chunks
         chunks = chunk_script_for_tts(script_text, max_words=250)
         logger.info(
@@ -149,3 +156,50 @@ class TTSSynthesizer:
         # Convert MP3 to WAV using ffmpeg directly (bypasses ffprobe requirement)
         wav_bytes = convert_mp3_to_wav_bytes(mp3_bytes, sample_rate=24000)
         return AudioSegment.from_file(io.BytesIO(wav_bytes), format="wav")
+
+    def _resolve_edge_voice(self, voice_name: str) -> str:
+        """Map generic or Gemini voice names to premium Edge Neural voices."""
+        mapping = {
+            "kore": "en-CA-LiamNeural",
+            "puck": "en-US-ChristopherNeural",
+            "aoede": "en-US-AriaNeural",
+            "liam": "en-CA-LiamNeural",
+            "clara": "en-CA-ClaraNeural",
+            "christopher": "en-US-ChristopherNeural",
+            "brian": "en-US-BrianNeural",
+            "aria": "en-US-AriaNeural",
+            "ava": "en-US-AvaNeural",
+        }
+        name_lower = voice_name.lower().strip()
+        if "neural" in name_lower:
+            return voice_name
+        return mapping.get(name_lower, "en-CA-LiamNeural")
+
+    def _synthesize_script_edge(self, script_text: str, output_path: Path) -> Path:
+        """Synthesize conversational script using high-definition Microsoft Edge Neural TTS."""
+        import asyncio
+        import edge_tts
+
+        voice = self._resolve_edge_voice(self.voice_name)
+        logger.info(
+            "Synthesizing full script (%d words) via edge-tts with voice '%s'...",
+            len(script_text.split()),
+            voice,
+        )
+
+        async def _run():
+            tts = edge_tts.Communicate(script_text, voice=voice)
+            await tts.save(str(output_path))
+
+        asyncio.run(_run())
+
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            raise RuntimeError(f"edge-tts failed to produce file at {output_path}")
+
+        filesize_mb = output_path.stat().st_size / (1024 * 1024)
+        logger.info(
+            "Podcast audio successfully synthesized via edge-tts: %s (Size: %.2f MB)",
+            output_path,
+            filesize_mb,
+        )
+        return output_path

@@ -52,7 +52,7 @@ jobs:
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
           TIMEZONE: "America/Edmonton"
           SCHEDULE_TIME: "07:00"
-          TTS_ENGINE: ${{ vars.TTS_ENGINE || 'gemini' }}
+          TTS_ENGINE: ${{ vars.TTS_ENGINE || 'edge' }}
         run: |
           python main.py --run-now --show all
 
