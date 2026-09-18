@@ -38,7 +38,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Execute Daily Briefing Pipeline
+      - name: Generate Podcast Cover Art
+        run: |
+          python utils/cover_art.py
+
+      - name: Execute PodCow Multi-Podcast Pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
@@ -49,22 +53,28 @@ jobs:
           TIMEZONE: "America/Edmonton"
           SCHEDULE_TIME: "07:00"
           TTS_ENGINE: ${{ vars.TTS_ENGINE || 'gemini' }}
-          VOICE_NAME: "Kore"
-          TARGET_PODCAST_WORDS: "1400"
         run: |
-          python main.py --run-now
+          python main.py --run-now --show all
 
-      - name: Publish Podcast Episode to GitHub Release
+      - name: Publish Podcast Episodes to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DATE=$(date +'%Y%m%d')
           TAG="v${DATE}"
-          MP3_FILE=$(ls output/podcast_*.mp3 2>/dev/null | head -n 1 || true)
-          if [ -n "$MP3_FILE" ] && [ -f "$MP3_FILE" ]; then
+          MP3_FILES=$(ls output/*.mp3 2>/dev/null || true)
+          if [ -n "$MP3_FILES" ]; then
             gh release delete "$TAG" --yes 2>/dev/null || true
-            gh release create "$TAG" "$MP3_FILE" --title "PodCOW 2: Daily Briefing - $DATE" --notes "Daily News Podcast for Edmonton, Alberta, Canada and World"
+            gh release create "$TAG" output/*.mp3 --title "PodCow Daily Episodes - $DATE" --notes "Daily Podcast episodes for PodCow Daily News Edmonton, Podcow Oilers and NHL Daily, and Podcow Global AI Daily."
           fi
+
+      - name: Commit Feed Updates and Episode History to Repository
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add public/*.xml public/*.json public/assets/*.jpg
+          git diff --staged --quiet || git commit -m "Update daily podcast feeds and episode archive [skip ci]"
+          git push origin main || echo "Git push skipped"
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5

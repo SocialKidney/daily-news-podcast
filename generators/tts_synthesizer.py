@@ -25,7 +25,7 @@ class TTSSynthesizer:
 
     def __init__(self, api_key: str = "", voice_name: str = ""):
         self.api_key = api_key or config.gemini_api_key
-        self.voice_name = voice_name or config.voice_name or "Kore"
+        self.voice_name = voice_name or getattr(config, "default_voice_name", getattr(config, "voice_name", "Kore"))
         self.client = None
         if self.api_key:
             try:

@@ -1,12 +1,12 @@
-"""LLM pipeline for generating structured newsletters and conversational 10-minute podcast scripts."""
+"""LLM pipeline for generating structured newsletters and conversational podcast scripts across shows."""
 
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import pytz
 
-from config import config
+from config import config, ShowConfig
 from collectors.news_collector import NewsStory
 from utils.audio_utils import sanitize_text_for_tts
 
@@ -16,8 +16,11 @@ logger = logging.getLogger(__name__)
 class LLMPipeline:
     """Orchestrates Gemini LLM generation for daily newsletter and podcast script."""
 
-    def __init__(self, api_key: str = ""):
-        self.api_key = api_key or config.gemini_api_key
+    def __init__(self, api_key: Optional[str] = None):
+        if api_key is None:
+            self.api_key = config.gemini_api_key
+        else:
+            self.api_key = api_key
         self.client = None
         if self.api_key:
             try:
@@ -29,57 +32,60 @@ class LLMPipeline:
                 logger.warning("Could not initialize Google GenAI client: %s", e)
 
     def generate_newsletter_content(
-        self, tiered_stories: Dict[str, List[NewsStory]], date_str: str = ""
+        self,
+        tiered_stories: Dict[str, List[NewsStory]],
+        show: Optional[ShowConfig] = None,
+        date_str: str = "",
     ) -> Dict[str, Any]:
-        """
-        Generate structured newsletter items from curated stories across 4 tiers.
-        Each story will feature:
-        - Punchy, accurate headline
-        - 2 to 3 concise lines of essential context
-        - Source attribution and link
-        """
+        """Generate structured newsletter items from curated stories."""
+        if show is None:
+            show = config.get_show("edmonton")
+
         if not date_str:
             tz = pytz.timezone(config.timezone)
             date_str = datetime.now(tz).strftime("%A, %B %d, %Y")
 
         if self.client:
             try:
-                return self._generate_newsletter_with_gemini(
-                    tiered_stories, date_str
-                )
+                return self._generate_newsletter_with_gemini(tiered_stories, show, date_str)
             except Exception as e:
                 logger.warning(
-                    "Gemini newsletter generation failed: %s. Using local synthesis.", e
-                )
-
-        return self._generate_newsletter_local_fallback(tiered_stories, date_str)
-
-    def generate_podcast_script(
-        self, tiered_stories: Dict[str, List[NewsStory]], date_str: str = ""
-    ) -> str:
-        """
-        Generate a single-host, conversational, natural-sounding podcast episode script.
-        Target word count: 1,300 to 1,500 words (~10 minutes spoken pace at 140-150 wpm).
-        Structured flow: Host Intro & Date -> Edmonton -> Alberta -> Canada -> Global -> Outro.
-        """
-        if not date_str:
-            tz = pytz.timezone(config.timezone)
-            date_str = datetime.now(tz).strftime("%A, %B %d, %Y")
-
-        if self.client:
-            try:
-                script = self._generate_podcast_with_gemini(tiered_stories, date_str)
-                cleaned = sanitize_text_for_tts(script)
-                word_count = len(cleaned.split())
-                logger.info("Generated podcast script with %d words.", word_count)
-                return cleaned
-            except Exception as e:
-                logger.warning(
-                    "Gemini podcast generation failed: %s. Using fallback script generator.",
+                    "Gemini newsletter generation failed for '%s': %s. Using local synthesis.",
+                    show.id if show else "unknown",
                     e,
                 )
 
-        script = self._generate_podcast_local_fallback(tiered_stories, date_str)
+        return self._generate_newsletter_local_fallback(tiered_stories, show, date_str)
+
+    def generate_podcast_script(
+        self,
+        tiered_stories: Dict[str, List[NewsStory]],
+        show: Optional[ShowConfig] = None,
+        date_str: str = "",
+    ) -> str:
+        """Generate a single-host, conversational podcast episode script tailored to the show."""
+        if show is None:
+            show = config.get_show("edmonton")
+
+        if not date_str:
+            tz = pytz.timezone(config.timezone)
+            date_str = datetime.now(tz).strftime("%A, %B %d, %Y")
+
+        if self.client:
+            try:
+                script = self._generate_podcast_with_gemini(tiered_stories, show, date_str)
+                cleaned = sanitize_text_for_tts(script)
+                word_count = len(cleaned.split())
+                logger.info("Generated podcast script for '%s': %d words.", show.id, word_count)
+                return cleaned
+            except Exception as e:
+                logger.warning(
+                    "Gemini podcast generation failed for '%s': %s. Using fallback script generator.",
+                    show.id if show else "unknown",
+                    e,
+                )
+
+        script = self._generate_podcast_local_fallback(tiered_stories, show, date_str)
         return sanitize_text_for_tts(script)
 
     def _format_stories_prompt_context(
@@ -92,91 +98,173 @@ class LLMPipeline:
             "alberta": "ALBERTA PROVINCIAL NEWS",
             "canada": "CANADA NATIONAL NEWS",
             "world": "GLOBAL / INTERNATIONAL NEWS",
+            "oilers": "EDMONTON OILERS NEWS & ANALYSIS",
+            "pacific_canadian": "PACIFIC DIVISION & CANADIAN RIVALS (FLAMES, CANUCKS)",
+            "nhl_league": "AROUND THE NHL & LEAGUE HEADLINES",
+            "frontier_models": "FRONTIER AI MODELS & RESEARCH BREAKTHROUGHS",
+            "clinical_health_ai": "AI IN HEALTHCARE, MEDICINE & CLINICAL DEPLOYMENTS",
+            "compute_and_industry": "COMPUTE INFRASTRUCTURE, SEMICONDUCTORS & VENTURE",
+            "policy_and_society": "AI POLICY, GOVERNANCE & GLOBAL ADOPTION",
         }
-        for tier, label in tier_labels.items():
-            stories = tiered_stories.get(tier, [])
+        for tier, stories in tiered_stories.items():
+            label = tier_labels.get(tier, tier.replace("_", " ").upper())
             lines.append(f"\n--- {label} ---")
             for i, s in enumerate(stories, 1):
                 lines.append(f"{i}. Title: {s.title}")
-                lines.append(f"   Source: {s.source}")
                 lines.append(f"   Summary: {s.summary}")
-                lines.append(f"   Link: {s.link}")
+                lines.append(f"   Source: {s.source} ({s.published_str})")
         return "\n".join(lines)
 
-    def _generate_newsletter_with_gemini(
-        self, tiered_stories: Dict[str, List[NewsStory]], date_str: str
-    ) -> Dict[str, Any]:
-        """Invoke Gemini to create structured newsletter JSON."""
-        context = self._format_stories_prompt_context(tiered_stories)
+    def _get_show_prompt(
+        self, show: ShowConfig, context: str, date_str: str
+    ) -> str:
+        """Construct a tailored system prompt and narrative arc based on show persona."""
+        target_words = show.target_words
 
-        prompt = f"""You are an expert editorial journalist and newsletter writer.
-Below are the top curated news stories for today ({date_str}) across four geographic tiers: Edmonton Local, Alberta Provincial, Canada National, and Global World.
+        if show.prompt_type == "oilers_hockey":
+            prompt = f"""You are an enthusiastic, articulate, deeply knowledgeable hockey broadcaster and analyst hosting today's edition of '{show.title}' for {date_str}.
 
-For each tier, format the stories into a structured newsletter section where each story has:
-1. "headline": A punchy, accurate headline.
-2. "context": Exactly 2 to 3 concise, highly informative sentences giving essential background, what happened, and why it matters.
-3. "source": The news outlet name.
-4. "link": The original source link.
+You are speaking directly to passionate hockey fans across Oil Country and the entire NHL community.
 
-Also provide:
-- "date": "{date_str}"
-- "summary_lead": A warm 2-sentence editorial overview introducing today's briefing.
+TARGET LENGTH: Exactly {target_words} words (acceptable range: 1,200 to 1,400 words). This represents approximately 8 to 10 minutes of spoken audio at standard broadcast pace.
 
-Input Stories:
+STRUCTURE & TOPICS:
+1. High-Energy Intro: Welcome listeners to the show, state today's date ({date_str}), set an energetic tone, and tease today's top Oilers storylines, Pacific Division matchups, and NHL headlines.
+2. Edmonton Oilers Spotlight: Deep dive into the Oilers news. Discuss training camp, recent games, line chemistry (McDavid, Draisaitl, top six, defensive pairings), goaltending, coach Kris Knoblauch's tactics, and upcoming matchups at Rogers Place. Use authentic hockey terms (forecheck, cycle, special teams, five-on-five, breakout).
+3. Pacific Division & Canadian Rivals: Breakdown news and rivalry chatter concerning the Calgary Flames, Vancouver Canucks, and the Pacific Division playoff picture.
+4. Around the NHL: Scan the wider league for major trades, waiver claims, Calder trophy rookie race, injury bulletins, or standout highlights.
+5. Outro: Summarize key games to watch tonight, deliver a sharp final thought, and sign off with a warm, energetic send-off for Oil Country.
+
+AUDIO & SPOKEN STYLE RULES (CRITICAL):
+- This script will be read directly by an AI Text-To-Speech engine.
+- Write in 100% natural, spoken, conversational English.
+- DO NOT include ANY markdown syntax (no asterisks, no hash signs, no bullet points).
+- DO NOT include ANY bracketed stage directions such as [Music], [Cheering], [Host laughs], or (Pause). Every single word in your output will be spoken aloud.
+- Use natural spoken transitions: "Turning our attention to the blue line...", "Down south in Calgary...", "Looking around the league today..."
+
+Today's Curated Stories:
 {context}
 
-Respond ONLY with valid JSON in this exact structure:
+Begin the podcast episode directly with the host's spoken words:
+"""
+        elif show.prompt_type == "global_ai":
+            prompt = f"""You are a lucid, sophisticated, intellectually rigorous technology analyst hosting today's episode of '{show.title}' for {date_str}.
+
+Your audience includes physicians, technologists, researchers, and builders who appreciate depth, substance, and zero marketing hype.
+
+TARGET LENGTH: Exactly {target_words} words (acceptable range: 1,200 to 1,400 words). This represents approximately 8 to 10 minutes of spoken audio.
+
+STRUCTURE & TOPICS:
+1. Thoughtful Intro: Welcome listeners, state today's date ({date_str}), and frame the conceptual theme connecting today's AI developments.
+2. Frontier Models & Research: Dive into the latest foundation models, multi-modal reasoning breakthroughs, context architecture, and agentic benchmarks. Explain *how* they work and what makes them functionally significant.
+3. AI in Healthcare & Medicine: Provide nuanced, clinically grounded analysis of medical AI applications—diagnostic radiology/pathology, clinical documentation assistants, pharmacology/drug discovery models, and hospital deployment realities.
+4. Compute, Infrastructure & Industry: Examine the physical backbone of AI—hyperscaler data centers, NVIDIA GPUs, custom silicon ASICs, energy constraints, and major venture investments.
+5. Policy, Safety & Global Governance: Discuss regulatory frameworks, open-weights debates, safety auditing, copyright rulings, and societal adoption.
+6. Outro: Synthesize the broader implications of today's developments and deliver an articulate, memorable concluding sign-off.
+
+AUDIO & SPOKEN STYLE RULES (CRITICAL):
+- This script will be read directly by an AI Text-To-Speech engine.
+- Write in 100% natural, spoken, conversational English.
+- DO NOT include ANY markdown syntax (no asterisks, no hash signs, no bullet points).
+- DO NOT include ANY bracketed stage directions such as [Intro Fades], [Pause], or (Music). Every single word in your output will be spoken aloud.
+- Use natural spoken transitions: "Now exploring clinical applications...", "On the hardware and semiconductor front...", "Shifting to policy and global governance..."
+
+Today's Curated Stories:
+{context}
+
+Begin the podcast episode directly with the host's spoken words:
+"""
+        else:  # Default: edmonton_news
+            prompt = f"""You are an engaging, articulate, professional podcast host delivering today's comprehensive morning briefing for '{show.title}' on {date_str}.
+
+You are speaking directly to a listener over coffee or during their morning commute in Edmonton, Alberta.
+
+TARGET LENGTH: Exactly {target_words} words (acceptable range: 1,300 to 1,500 words). This represents approximately 10 minutes of spoken audio at standard conversation pace.
+
+STRUCTURE & TOPICS:
+1. Warm Intro: Welcome the listener, state today's date ({date_str}), and preview the journey ahead from our backyard in Edmonton, across Alberta, into Canada as a whole, and out to major global developments.
+2. Edmonton Local News: Dive in-depth into the local stories. Give meaningful context—why it matters to Edmontonians, transit riders, families, or local businesses.
+3. Alberta Provincial News: Transition smoothly to the provincial picture. Discuss policy, healthcare, energy, economy, or government developments with nuanced analysis.
+4. Canada National News: Expand our lens to federal politics, the national economy, interest rates, or cross-country affairs.
+5. Global / World News: Connect Canadian and local listeners to major international headlines, geopolitical movements, or groundbreaking events.
+6. Outro: Summarize key takeaways, offer an inspiring or thoughtful concluding thought for the day, and deliver a warm sign-off.
+
+AUDIO & SPOKEN STYLE RULES (CRITICAL):
+- This script will be read directly by an AI Text-To-Speech engine.
+- Write in 100% natural, spoken, conversational English.
+- DO NOT include ANY markdown syntax (no asterisks, no hash signs, no bullet points).
+- DO NOT include ANY bracketed stage directions such as [Music], [Pause], or (Host smiles). Every single word in your output will be spoken aloud.
+- Use natural spoken transitions: "Turning to our provincial beat...", "Looking across the country...", "Shifting our view across the border..."
+
+Today's Curated Stories:
+{context}
+
+Begin the podcast episode directly with the host's spoken words:
+"""
+        return prompt
+
+    def _generate_newsletter_with_gemini(
+        self,
+        tiered_stories: Dict[str, List[NewsStory]],
+        show: ShowConfig,
+        date_str: str,
+    ) -> Dict[str, Any]:
+        """Invoke Gemini to generate structured JSON newsletter content."""
+        context = self._format_stories_prompt_context(tiered_stories)
+
+        prompt = f"""You are an expert news editor producing a daily intelligence newsletter for '{show.title}' on {date_str}.
+
+Analyze the curated stories below across all categories and produce a structured JSON response.
+
+Return ONLY valid JSON adhering strictly to this schema:
 {{
   "date": "{date_str}",
-  "summary_lead": "...",
-  "edmonton": [
-    {{"headline": "...", "context": "...", "source": "...", "link": "..."}}
-  ],
-  "alberta": [
-    {{"headline": "...", "context": "...", "source": "...", "link": "..."}}
-  ],
-  "canada": [
-    {{"headline": "...", "context": "...", "source": "...", "link": "..."}}
-  ],
-  "world": [
-    {{"headline": "...", "context": "...", "source": "...", "link": "..."}}
-  ]
+  "summary_lead": "A 2-3 sentence executive morning summary capturing today's major themes.",
+  "tiers": {{
+    "<tier_name>": [
+      {{
+        "headline": "Punchy, accurate headline (maximum 12 words)",
+        "context": "2 to 3 concise, informative sentences of essential context and significance.",
+        "source": "Source publication name",
+        "link": "Full URL to original article"
+      }}
+    ]
+  }}
 }}
+
+Stories Context:
+{context}
 """
 
-        # Call Gemini models using Interactions API with fallback list
-        candidate_models = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3-flash-preview"]
+        candidate_models = ["gemini-flash-latest", "gemini-3.6-flash"]
         text_response = ""
         last_error = None
 
         for model_name in candidate_models:
             try:
-                interaction = self.client.interactions.create(
+                res = self.client.models.generate_content(
                     model=model_name,
-                    input=prompt,
+                    contents=prompt,
                 )
-                text_response = interaction.output_text or ""
+                text_response = res.text or ""
                 if text_response:
                     break
             except Exception as e:
                 last_error = e
-                logger.debug("Interactions call failed with %s: %s", model_name, e)
                 try:
-                    res = self.client.models.generate_content(
+                    interaction = self.client.interactions.create(
                         model=model_name,
-                        contents=prompt,
+                        input=prompt,
                     )
-                    text_response = res.text or ""
+                    text_response = interaction.output_text or ""
                     if text_response:
                         break
                 except Exception as e2:
                     last_error = e2
-                    logger.debug("generate_content failed with %s: %s", model_name, e2)
 
         if not text_response:
             raise RuntimeError(f"All Gemini candidate models failed: {last_error}")
 
-        # Parse JSON
         clean_json = text_response.strip()
         if clean_json.startswith("```json"):
             clean_json = clean_json[7:]
@@ -190,67 +278,40 @@ Respond ONLY with valid JSON in this exact structure:
         return data
 
     def _generate_podcast_with_gemini(
-        self, tiered_stories: Dict[str, List[NewsStory]], date_str: str
+        self,
+        tiered_stories: Dict[str, List[NewsStory]],
+        show: ShowConfig,
+        date_str: str,
     ) -> str:
-        """Invoke Gemini to write a 1,300 to 1,500 word conversational podcast script."""
+        """Invoke Gemini to write a conversational podcast script for the specified show."""
         context = self._format_stories_prompt_context(tiered_stories)
-        target_words = config.target_podcast_words  # Default 1400
+        prompt = self._get_show_prompt(show, context, date_str)
 
-        prompt = f"""You are an engaging, articulate, professional podcast host delivering today's comprehensive morning briefing for {date_str}.
-
-You are speaking directly to a listener over coffee or during their morning commute in Edmonton, Alberta.
-
-TARGET LENGTH: Exactly {target_words} words (acceptable range: 1,300 to 1,500 words). This represents approximately 10 minutes of spoken audio at standard conversation pace.
-
-REQUIREMENTS & STRUCTURE:
-1. Warm Intro: Welcome the listener, state today's date ({date_str}), and preview the journey ahead from our backyard here in Edmonton, expanding across Alberta, looking at Canada as a whole, and then scanning key developments around the globe.
-2. Edmonton Local News: Dive in-depth into the local stories. Give meaningful context, why it matters to Edmontonians, transit riders, families, or local businesses.
-3. Alberta Provincial News: Transition smoothly to the provincial picture. Discuss policy, healthcare, energy, economy, or government developments with nuanced analysis.
-4. Canada National News: Expand our lens to federal politics, the national economy, interest rates, or cross-country affairs.
-5. Global / World News: Connect Canadian and local listeners to major international headlines, geopolitical movements, or groundbreaking technological/environmental events.
-6. Outro: Summarize key takeaways, offer an inspiring or thoughtful concluding thought for the day, and deliver a warm sign-off.
-
-AUDIO & SPOKEN STYLE RULES (CRITICAL):
-- This script will be read directly by an AI Text-To-Speech engine.
-- Write in 100% natural, spoken, conversational English.
-- DO NOT include ANY markdown syntax (no asterisks, no hash signs, no bullet points).
-- DO NOT include ANY bracketed stage directions or sound effect cues such as [Intro Music Fades], [Host Chuckles], [Pause], or (Music). Every single word in your output will be spoken aloud.
-- Use natural spoken transitions: "Now turning to our provincial beat...", "Looking across the country...", "Shifting our view across the border..."
-- Provide rich substance and comprehensive storytelling for each news item to meet the target word count naturally.
-
-Today's Curated Stories:
-{context}
-
-Begin the podcast episode directly with the host's spoken words:
-"""
-
-        candidate_models = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3-flash-preview"]
+        candidate_models = ["gemini-flash-latest", "gemini-3.6-flash"]
         text_response = ""
         last_error = None
 
         for model_name in candidate_models:
             try:
-                interaction = self.client.interactions.create(
+                res = self.client.models.generate_content(
                     model=model_name,
-                    input=prompt,
+                    contents=prompt,
                 )
-                text_response = interaction.output_text or ""
+                text_response = res.text or ""
                 if text_response:
                     break
             except Exception as e:
                 last_error = e
-                logger.debug("Interactions call failed with %s: %s", model_name, e)
                 try:
-                    res = self.client.models.generate_content(
+                    interaction = self.client.interactions.create(
                         model=model_name,
-                        contents=prompt,
+                        input=prompt,
                     )
-                    text_response = res.text or ""
+                    text_response = interaction.output_text or ""
                     if text_response:
                         break
                 except Exception as e2:
                     last_error = e2
-                    logger.debug("generate_content failed with %s: %s", model_name, e2)
 
         if not text_response:
             raise RuntimeError(f"All Gemini candidate models failed: {last_error}")
@@ -258,28 +319,28 @@ Begin the podcast episode directly with the host's spoken words:
         return text_response
 
     def _generate_newsletter_local_fallback(
-        self, tiered_stories: Dict[str, List[NewsStory]], date_str: str
+        self,
+        tiered_stories: Dict[str, List[NewsStory]],
+        show: ShowConfig,
+        date_str: str,
     ) -> Dict[str, Any]:
         """Local fallback to format stories into newsletter data structure."""
         newsletter_data: Dict[str, Any] = {
             "date": date_str,
             "summary_lead": (
-                f"Welcome to your curated morning digest for {date_str}. "
-                "Here are the top stories shaping Edmonton, Alberta, Canada, and the world today."
+                f"Welcome to your curated daily briefing for {show.title} on {date_str}. "
+                "Here are the top stories shaping today's intelligence report."
             ),
-            "edmonton": [],
-            "alberta": [],
-            "canada": [],
-            "world": [],
+            "tiers": {},
         }
 
-        for tier in ["edmonton", "alberta", "canada", "world"]:
-            stories = tiered_stories.get(tier, [])
+        for tier, stories in tiered_stories.items():
+            newsletter_data["tiers"][tier] = []
             for s in stories:
                 context_sentences = s.summary.strip()
                 if not context_sentences:
                     context_sentences = f"Key development reported by {s.source} regarding {s.title}."
-                newsletter_data[tier].append(
+                newsletter_data["tiers"][tier].append(
                     {
                         "headline": s.title,
                         "context": context_sentences,
@@ -291,128 +352,49 @@ Begin the podcast episode directly with the host's spoken words:
         return newsletter_data
 
     def _generate_podcast_local_fallback(
-        self, tiered_stories: Dict[str, List[NewsStory]], date_str: str
+        self,
+        tiered_stories: Dict[str, List[NewsStory]],
+        show: ShowConfig,
+        date_str: str,
     ) -> str:
-        """
-        Synthesizes a rich, natural-sounding, 1,300+ word conversational podcast script
-        without requiring external LLM API calls, ideal for dry-runs and offline testing.
-        """
+        """Local fallback generating rich conversational script without external API."""
         paragraphs: List[str] = []
 
-        # Intro
-        paragraphs.append(
-            f"Good morning, and welcome to your Daily Briefing podcast for {date_str}. "
-            "I am your host, and wherever you are tuning in from today, whether you are starting your morning "
-            "with a fresh cup of coffee, heading out on your commute across the river, or settling into your workspace, "
-            "we have an expansive ten-minute briefing lined up for you. "
-            "Our focus today follows a deliberate path: starting right here in our municipal backyard with the latest "
-            "developments shaping Edmonton, expanding across Alberta to look at provincial policy and economic momentum, "
-            "broadening our perspective to national affairs from coast to coast, and finally scanning the critical headlines "
-            "making waves on the global stage. There is a lot of ground to cover, so let us jump right in."
-        )
-
-        # Edmonton Section
-        paragraphs.append(
-            "We begin our morning right here in Edmonton. Local governance, transit infrastructure, and community "
-            "services are in sharp focus this week as city officials and residents navigate the evolving needs of our growing metropolitan area."
-        )
-
-        edmonton_openers = [
-            "Our opening Edmonton story centers on",
-            "Next in local developments, we turn to",
-            "Rounding out our Edmonton metro coverage,",
-        ]
-        edmonton_stories = tiered_stories.get("edmonton", [])
-        for i, story in enumerate(edmonton_stories):
-            opener = edmonton_openers[i % len(edmonton_openers)]
+        if show.prompt_type == "oilers_hockey":
             paragraphs.append(
-                f"{opener} {story.title}, reported by {story.source}. "
-                f"{story.summary} "
-                "For Edmontonians, this is a topic that resonates directly with everyday life. Municipal decision-making "
-                "often impacts the essential rhythms of the city, from commute times across major corridors like the Whitemud and Yellowhead, "
-                "to neighborhood revitalization and local business activity. Community advocates have highlighted how crucial proactive planning "
-                "remains, especially as our population continues to expand and demands on public infrastructure evolve. As council debates continue, "
-                "we will be watching closely to see how administration balances immediate service delivery with long-term capital priorities."
+                f"Welcome to {show.title} for {date_str}. I am Dr. Nikhil Shah, and today we are "
+                f"breaking down everything happening on and off the ice for the Edmonton Oilers and across the National Hockey League."
+            )
+        elif show.prompt_type == "global_ai":
+            paragraphs.append(
+                f"Welcome to {show.title} for {date_str}. I am Dr. Nikhil Shah, and today we examine the frontier of "
+                f"artificial intelligence, from breakthrough neural architectures to transformative clinical healthcare applications."
+            )
+        else:
+            paragraphs.append(
+                f"Good morning and welcome to {show.title} for {date_str}. I am Dr. Nikhil Shah, "
+                f"delivering your morning intelligence briefing covering Edmonton, Alberta, Canada, and key global headlines."
             )
 
-        # Transition to Alberta
-        paragraphs.append(
-            "Stepping back to look at the broader provincial landscape, developments across Alberta are setting the tone "
-            "for healthcare, energy transition, and interprovincial relations. With the provincial legislature actively weighing key files, "
-            "decisions made in the capital are reverberating from Calgary to Fort McMurray."
-        )
-
-        alberta_openers = [
-            "Looking first at provincial affairs, our focus turns to",
-            "Also making headlines across Alberta,",
-            "And concluding our provincial scan,",
-        ]
-        alberta_stories = tiered_stories.get("alberta", [])
-        for i, story in enumerate(alberta_stories):
-            opener = alberta_openers[i % len(alberta_openers)]
+        for tier, stories in tiered_stories.items():
+            tier_name = tier.replace("_", " ").title()
             paragraphs.append(
-                f"{opener} {story.title}, as highlighted by {story.source}. "
-                f"{story.summary} "
-                "Across Alberta, policy adjustments in this sector have sparked widespread interest among industry leaders, healthcare professionals, "
-                "and everyday families. Economists point out that Alberta's unique position, characterized by resource vitality and demographic growth, "
-                "demands both fiscal discipline and targeted reinvestment in vital public services. Whether you are following provincial budget updates "
-                "or regional job creation programs, this ongoing story illustrates the strategic choices Alberta is making to navigate modern economic pressures."
+                f"Now turning our focus directly to {tier_name}. There are several essential developments "
+                "that deserve our attention and careful analysis today."
             )
+            for s in stories:
+                paragraphs.append(
+                    f"First on our radar: {s.title}. As reported by {s.source}, {s.summary} "
+                    f"Looking more deeply into this headline, the broader implications are substantial for our community. "
+                    f"Whether we examine the economic trajectory, community impact, or governance perspective, "
+                    f"this development signals important momentum across {tier_name}. Analysts and observers will continue "
+                    "monitoring upcoming milestones as further details unfold in the coming days."
+                )
 
-        # Transition to Canada
         paragraphs.append(
-            "Now, expanding our lens across the nation, Canada is grappling with significant economic and federal policy discussions. "
-            "From parliamentary debates in Ottawa to shifts in monetary policy and federal-provincial agreements, the national climate "
-            "reflects a delicate balance between fiscal prudence and domestic investment."
-        )
-
-        canada_openers = [
-            "On the national front, our top headline is",
-            "Moving across the country, we are tracking",
-            "Additionally in federal and national news,",
-        ]
-        canada_stories = tiered_stories.get("canada", [])
-        for i, story in enumerate(canada_stories):
-            opener = canada_openers[i % len(canada_openers)]
-            paragraphs.append(
-                f"{opener} {story.title}, covered by {story.source}. "
-                f"{story.summary} "
-                "From coast to coast, this issue reflects broader challenges and opportunities confronting Canadian society today. Federal policymakers "
-                "are under sustained scrutiny to ensure regulatory frameworks remain responsive to international market realities while protecting consumer interests. "
-                "Analysts tracking these developments emphasize that national decisions on infrastructure, trade, and social programming will carry "
-                "significant downstream implications for provincial economies right across the country."
-            )
-
-        # Transition to World
-        paragraphs.append(
-            "Finally, we turn our attention across international borders to the global arena. In an increasingly interconnected world, "
-            "international trade flows, diplomatic summits, and global technological advancements directly influence domestic supply chains and macroeconomic conditions."
-        )
-
-        world_openers = [
-            "On the international stage, our primary global report covers",
-            "In other international developments shaping world markets,",
-            "And rounding out our global scan today,",
-        ]
-        world_stories = tiered_stories.get("world", [])
-        for i, story in enumerate(world_stories):
-            opener = world_openers[i % len(world_openers)]
-            paragraphs.append(
-                f"{opener} {story.title}, brought to us by {story.source}. "
-                f"{story.summary} "
-                "Global observers are monitoring this development with keen interest. The interplay of international alliances, cross-border commerce, "
-                "and technological innovation continues to demonstrate that events abroad rapidly shape consumer sentiment and strategic planning at home. "
-                "International analysts underscore the necessity of sustained multilateral cooperation as nations navigate shared economic and environmental challenges."
-            )
-
-        # Outro
-        paragraphs.append(
-            f"That brings us to the close of today's Daily Briefing for {date_str}. "
-            "From Edmonton's municipal corridors to the broader provincial stage, across Canada's national landscape, and around the globe, "
-            "you are now fully equipped with the facts and context you need to tackle the day ahead. "
-            "Don't forget to check the accompanying newsletter in your email inbox for full source links and deeper reading on each of the topics we covered. "
-            "Thank you for spending ten minutes of your morning with us. Have a productive, inspiring, and safe day ahead, and we will be back "
-            "tomorrow morning with your next comprehensive briefing. Take care."
+            f"That wraps up today's comprehensive edition of {show.title} for {date_str}. "
+            "Thank you so much for joining me this morning. Be sure to stay informed, take care of those around you, "
+            "and have a productive and fantastic day ahead."
         )
 
         return "\n\n".join(paragraphs)

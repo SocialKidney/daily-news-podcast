@@ -1,4 +1,4 @@
-"""News retrieval and curation module for Edmonton, Alberta, Canada, and Global tiers."""
+"""News retrieval and curation module for multi-podcast network."""
 
 import re
 import html
@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 import requests
 import feedparser
 
-from config import config
+from config import config, ShowConfig
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +34,9 @@ class NewsStory:
 
 
 class NewsCollector:
-    """Collects, deduplicates, and filters news stories across geographic tiers."""
+    """Collects, deduplicates, and filters news stories across custom tiers for any show."""
 
-    def __init__(self, request_timeout: int = 6):
+    def __init__(self, request_timeout: int = 8):
         self.request_timeout = request_timeout
         self.headers = {
             "User-Agent": (
@@ -46,19 +46,37 @@ class NewsCollector:
             )
         }
 
-    def fetch_all_tiers(self, stories_per_tier: int = 3) -> Dict[str, List[NewsStory]]:
-        """Fetch and curate news across all configured tiers."""
+    def fetch_show_tiers(
+        self, show: ShowConfig, stories_per_tier: int = 3
+    ) -> Dict[str, List[NewsStory]]:
+        """Fetch and curate news across all configured tiers for a specific show."""
         results: Dict[str, List[NewsStory]] = {}
-        for tier in ["edmonton", "alberta", "canada", "world"]:
-            logger.info("Fetching news for tier: %s", tier)
-            stories = self.fetch_tier(tier, max_stories=stories_per_tier)
-            results[tier] = stories
-            logger.info("Retrieved %d stories for tier '%s'", len(stories), tier)
+        for tier_name, sources in show.tiers.items():
+            logger.info("Fetching news for show '%s', tier '%s'", show.id, tier_name)
+            stories = self.fetch_tier(tier_name, feed_sources=sources, max_stories=stories_per_tier)
+            results[tier_name] = stories
+            logger.info("Retrieved %d stories for tier '%s'", len(stories), tier_name)
         return results
 
-    def fetch_tier(self, tier: str, max_stories: int = 3) -> List[NewsStory]:
+    def fetch_all_tiers(self, stories_per_tier: int = 3) -> Dict[str, List[NewsStory]]:
+        """Backwards-compatible helper: fetches tiers for the default edmonton news show."""
+        edmonton_show = config.get_show("edmonton")
+        if edmonton_show:
+            return self.fetch_show_tiers(edmonton_show, stories_per_tier=stories_per_tier)
+        return {}
+
+    def fetch_tier(
+        self,
+        tier: str,
+        feed_sources: Optional[List[dict]] = None,
+        max_stories: int = 3,
+    ) -> List[NewsStory]:
         """Fetch news for a specific tier from its configured RSS feeds."""
-        feed_sources = config.rss.tiers.get(tier, [])
+        if feed_sources is None:
+            # Look up from edmonton show as default
+            ed_show = config.get_show("edmonton")
+            feed_sources = ed_show.tiers.get(tier, []) if ed_show else []
+
         collected_raw: List[NewsStory] = []
 
         for source in feed_sources:
@@ -140,15 +158,10 @@ class NewsCollector:
         """Strip HTML tags, decode entities, and normalize whitespace and punctuation."""
         if not raw_html:
             return ""
-        # Replace block breaks with space
         text = re.sub(r"<(?:br|p|div|hr)[^>]*>", " ", raw_html, flags=re.IGNORECASE)
-        # Remove remaining HTML tags
         clean = re.sub(r"<[^>]+>", "", text)
-        # Decode HTML entities
         clean = html.unescape(clean)
-        # Fix detached punctuation like "word ." -> "word."
         clean = re.sub(r"\s+([.,!?:;])", r"\1", clean)
-        # Normalize whitespace
         clean = re.sub(r"\s+", " ", clean).strip()
         return clean
 
@@ -171,12 +184,10 @@ class NewsCollector:
         seen_titles = []
 
         for story in stories:
-            # 1. Exact or canonical URL deduplication
             clean_link = story.link.split("?")[0].rstrip("/")
             if clean_link and clean_link in seen_links:
                 continue
 
-            # 2. Title token similarity deduplication
             norm_title = self._normalize_title(story.title)
             if not norm_title:
                 continue
@@ -189,7 +200,7 @@ class NewsCollector:
                 overlap = len(story_words & prev_words) / max(
                     len(story_words | prev_words), 1
                 )
-                if overlap > 0.55:  # Over 55% word token match
+                if overlap > 0.55:
                     is_duplicate = True
                     break
 
@@ -220,7 +231,6 @@ class NewsCollector:
             s for s in stories if s.published is None or s.published >= recent_threshold
         ]
 
-        # If too few recent stories, use what we have
         candidates = recent_stories if len(recent_stories) >= max_count else stories
         return candidates[:max_count]
 
@@ -228,19 +238,20 @@ class NewsCollector:
         """Provide fallback stories if RSS feeds are unreachable."""
         now_str = datetime.now(timezone.utc).strftime("%b %d, %Y")
         fallbacks = {
+            # Edmonton News Show
             "edmonton": [
                 NewsStory(
                     tier="edmonton",
-                    title="City of Edmonton Advances Municipal Infrastructure and Transit Plan",
-                    summary="Edmonton City Council reviewed progress on local transit improvements and core service investments today.",
+                    title="City of Edmonton Advances Core Transit and Infrastructure Priority Plan",
+                    summary="Edmonton City Council reviewed progress on LRT network expansions, downtown safety, and municipal service investments.",
                     link="https://www.edmonton.ca/city_government/news",
                     source="City of Edmonton",
                     published_str=now_str,
                 ),
                 NewsStory(
                     tier="edmonton",
-                    title="Edmonton Public Schools Announce New Community Learning Initiative",
-                    summary="A new educational enrichment program is being launched across Edmonton public schools this season.",
+                    title="Edmonton Public Schools Expand Community Learning and Technology Labs",
+                    summary="New enrichment programming is launching across Edmonton area high schools and STEM facilities.",
                     link="https://www.edmontonjournal.com",
                     source="Edmonton Journal",
                     published_str=now_str,
@@ -249,16 +260,16 @@ class NewsCollector:
             "alberta": [
                 NewsStory(
                     tier="alberta",
-                    title="Alberta Government Outlines Economic Diversification and Energy Strategy",
-                    summary="Provincial officials shared an updated fiscal framework focusing on energy innovation and regional job growth.",
+                    title="Alberta Government Outlines Energy Innovation and Technology Capital Grants",
+                    summary="Provincial officials shared updated funding allocations targeting clean grid technology and petrochemical investment.",
                     link="https://www.alberta.ca/news.cfm",
                     source="Alberta Government",
                     published_str=now_str,
                 ),
                 NewsStory(
                     tier="alberta",
-                    title="Health Care Modernization Investments Announced Across Alberta Clinics",
-                    summary="New provincial funding is allocated to reduce emergency wait times and strengthen rural healthcare capacity.",
+                    title="Modernization Funding Announced for Regional Healthcare Facilities Across Alberta",
+                    summary="Investments aim to bolster surgical capacity, reduce emergency wait times, and expand clinical training.",
                     link="https://www.cbc.ca/news/canada/calgary",
                     source="CBC Alberta",
                     published_str=now_str,
@@ -267,16 +278,16 @@ class NewsCollector:
             "canada": [
                 NewsStory(
                     tier="canada",
-                    title="Bank of Canada Evaluates Economic Indicators and Inflation Outlook",
-                    summary="Federal economic analysts published their quarterly assessment of consumer trends and interest rate expectations.",
+                    title="Bank of Canada Assesses Inflation Outlook and National Economic Trajectory",
+                    summary="Economic policymakers released their quarterly monetary policy summary highlighting employment figures and interest rate expectations.",
                     link="https://www.cbc.ca/news/business",
                     source="CBC News Canada",
                     published_str=now_str,
                 ),
                 NewsStory(
                     tier="canada",
-                    title="Federal Parliament Debates New Digital Infrastructure Bill",
-                    summary="Lawmakers in Ottawa convened to discuss legislation aimed at enhancing nationwide cybersecurity and broadband access.",
+                    title="Parliament Focuses on National Housing Strategy and Digital Trade Policies",
+                    summary="Federal ministers in Ottawa reviewed legislative frameworks to speed infrastructure delivery across provinces.",
                     link="https://www.ctvnews.ca/canada",
                     source="CTV News",
                     published_str=now_str,
@@ -285,21 +296,109 @@ class NewsCollector:
             "world": [
                 NewsStory(
                     tier="world",
-                    title="Global Leaders Convene for International Economic and Climate Summit",
-                    summary="Delegates from around the world gathered to finalize cooperative pacts on trade and clean energy transitions.",
+                    title="Global Leaders Finalize Cooperative Agreements at International Economic Forum",
+                    summary="Delegates from major global economies reached consensus on sustainable supply chains and trade stability.",
                     link="https://www.bbc.com/news/world",
                     source="BBC World News",
                     published_str=now_str,
                 ),
                 NewsStory(
                     tier="world",
-                    title="Tech Innovations Spotlight Advances in Renewable Grid Storage",
-                    summary="A breakthrough in long-duration battery storage technology promises to accelerate clean electricity deployment globally.",
+                    title="Renewable Energy Storage Milestones Set New Benchmark for Grid Reliability",
+                    summary="Next-generation battery technology tests demonstrate extended duration capabilities for utility grids.",
                     link="https://www.bbc.com/news/technology",
                     source="BBC News",
                     published_str=now_str,
                 ),
             ],
+            # Oilers & NHL Show
+            "oilers": [
+                NewsStory(
+                    tier="oilers",
+                    title="Edmonton Oilers Set Line Combinations and Special Teams Focus at Training Camp",
+                    summary="Head coach Kris Knoblauch and staff evaluated top-six forward pairings and penalty-kill structures following practice at Rogers Place.",
+                    link="https://oilersnation.com",
+                    source="OilersNation",
+                    published_str=now_str,
+                ),
+                NewsStory(
+                    tier="oilers",
+                    title="Connor McDavid and Leon Draisaitl Lead Intensive High-Tempo Scrimmage",
+                    summary="The Oilers star duo showcased chemistry with new line additions as preparations ramp up for the upcoming campaign.",
+                    link="https://edmontonjournal.com/category/sports/hockey/nhl/edmonton-oilers/",
+                    source="Edmonton Journal",
+                    published_str=now_str,
+                ),
+            ],
+            "pacific_canadian": [
+                NewsStory(
+                    tier="pacific_canadian",
+                    title="Calgary Flames and Vancouver Canucks Prepare for Pacific Division Rivalry Clashes",
+                    summary="Pacific Division rivals refine their blue-line pairings and goaltending rotations ahead of opening week.",
+                    link="https://calgaryherald.com/category/sports/hockey/nhl/calgary-flames/",
+                    source="Calgary Herald",
+                    published_str=now_str,
+                ),
+            ],
+            "nhl_league": [
+                NewsStory(
+                    tier="nhl_league",
+                    title="NHL Previews Key Calder Trophy Contenders and League-Wide Trade Speculation",
+                    summary="Analysts break down incoming rookie talent and roster movement as teams finalize 23-man rosters.",
+                    link="https://thehockeynews.com",
+                    source="The Hockey News",
+                    published_str=now_str,
+                ),
+            ],
+            # Global AI Show
+            "frontier_models": [
+                NewsStory(
+                    tier="frontier_models",
+                    title="Frontier AI Labs Unveil Next-Generation Multimodal Reasoning and Tool Use Models",
+                    summary="New benchmarks demonstrate significant leaps in autonomous reasoning, software synthesis, and complex planning capabilities.",
+                    link="https://techcrunch.com/category/artificial-intelligence/",
+                    source="TechCrunch AI",
+                    published_str=now_str,
+                ),
+                NewsStory(
+                    tier="frontier_models",
+                    title="Open-Source AI Ecosystem Surges with High-Efficiency Distilled Foundation Models",
+                    summary="New open-weight models deliver competitive reasoning performance on standard consumer and edge hardware.",
+                    link="https://www.marktechpost.com",
+                    source="MarkTechPost",
+                    published_str=now_str,
+                ),
+            ],
+            "clinical_health_ai": [
+                NewsStory(
+                    tier="clinical_health_ai",
+                    title="Clinical AI Diagnostics and Pathology Systems Secure Broad Hospital Deployments",
+                    summary="Peer-reviewed clinical studies show major efficiency gains in diagnostic radiology triage and automated ambient physician note transcription.",
+                    link="https://medcitynews.com",
+                    source="MedCity News",
+                    published_str=now_str,
+                ),
+            ],
+            "compute_and_industry": [
+                NewsStory(
+                    tier="compute_and_industry",
+                    title="Hyperscalers and Semiconductor Giants Ramp Next-Gen Silicon and Liquid-Cooled Data Centers",
+                    summary="Billions in capital expenditure flow toward custom silicon accelerators and gigawatt-scale infrastructure.",
+                    link="https://feeds.arstechnica.com",
+                    source="Ars Technica",
+                    published_str=now_str,
+                ),
+            ],
+            "policy_and_society": [
+                NewsStory(
+                    tier="policy_and_society",
+                    title="Global Regulatory Frameworks Align on Safety Standards and Transparent Model Auditing",
+                    summary="International policy leaders convene to establish verified compliance criteria for frontier AI safety evaluations.",
+                    link="https://www.wired.com",
+                    source="Wired AI",
+                    published_str=now_str,
+                ),
+            ],
         }
-        tier_fallbacks = fallbacks.get(tier, fallbacks["world"])
+        tier_fallbacks = fallbacks.get(tier, fallbacks.get("world", []))
         return tier_fallbacks[:count]

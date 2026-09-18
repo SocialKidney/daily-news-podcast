@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Podcow Oilers and NHL Daily</title>
+    <link>https://socialkidney.github.io/daily-news-podcast</link>
+    <language>en-ca</language>
+    <itunes:author>Dr. Nikhil Shah</itunes:author>
+    <description>Daily hockey intelligence with an in-depth focus on the Edmonton Oilers, Pacific Division and Canadian rivals, and top headlines across the NHL.</description>
+    <itunes:summary>Daily hockey intelligence with an in-depth focus on the Edmonton Oilers, Pacific Division and Canadian rivals, and top headlines across the NHL.</itunes:summary>
+    <itunes:image href="https://socialkidney.github.io/daily-news-podcast/assets/cover_oilers.jpg"/>
+    <itunes:category text="Sports">
+      <itunes:category text="Hockey"/>
+    </itunes:category>
+    <itunes:explicit>no</itunes:explicit>
+    
+    <item>
+      <title>Podcow Oilers and NHL Daily: Thursday, September 17, 2026</title>
+      <description><![CDATA[As NHL training camps get underway, excitement builds in Edmonton with the Oilers entering peak hype season. Meanwhile, new Vancouver Canucks head coach Manny Malhotra set an intense physical tone by outskating his roster during day one bag skates. Across the league, current top overall picks offered their thoughts on highly anticipated prospect Gavin McKenna.]]></description>
+      <guid isPermaLink="false">podcow-oilers-20260917</guid>
+      <pubDate>Fri, 18 Sep 2026 03:02:37 +0000</pubDate>
+      <enclosure url="https://github.com/SocialKidney/daily-news-podcast/releases/download/v20260917/oilers_20260917.mp3" length="0" type="audio/mpeg"/>
+      <itunes:duration>09:14</itunes:duration>
+      <itunes:explicit>no</itunes:explicit>
+      <itunes:author>Dr. Nikhil Shah</itunes:author>
+    </item>
+    
+  </channel>
+</rss>
