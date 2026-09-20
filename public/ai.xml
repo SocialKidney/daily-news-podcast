@@ -14,6 +14,17 @@
     <itunes:explicit>no</itunes:explicit>
     
     <item>
+      <title>Podcow Global AI Daily: Sunday, September 20, 2026</title>
+      <description><![CDATA[Today's AI landscape is defined by escalating political tension over compute infrastructure and growing cybersecurity anxieties. While political leadership pushes for aggressive national AI expansion—sparking pushback from local bases—the democratization of AI-driven vulnerability discovery tools is outpacing safety regulations. Meanwhile, consumer privacy is back in the spotlight as major tech players face scrutiny over aggressive data harvesting methods for AI training.]]></description>
+      <guid isPermaLink="false">podcow-ai-20260920</guid>
+      <pubDate>Sun, 20 Sep 2026 17:01:45 +0000</pubDate>
+      <enclosure url="https://github.com/SocialKidney/daily-news-podcast/releases/download/v20260920/ai_20260920.mp3" length="3216384" type="audio/mpeg"/>
+      <itunes:duration>09:06</itunes:duration>
+      <itunes:explicit>no</itunes:explicit>
+      <itunes:author>Dr. Nikhil Shah</itunes:author>
+    </item>
+    
+    <item>
       <title>Podcow Global AI Daily: Saturday, September 19, 2026</title>
       <description><![CDATA[Today's AI landscape is highlighted by severe defense concerns, as reports reveal an AI hallucination nearly prompted a US military strike against Chinese targets amid a wider surge in automated cybersecurity vulnerabilities. Concurrently, academic researchers in mathematics are grappling with an increasing reliance on AI tools despite existential field concerns, while healthcare platforms secure strategic capital to advance personalized and digital care models.]]></description>
       <guid isPermaLink="false">podcow-ai-20260919</guid>
