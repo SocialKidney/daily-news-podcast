@@ -14,6 +14,17 @@
     <itunes:explicit>no</itunes:explicit>
     
     <item>
+      <title>PodCow Daily News Edmonton: Monday, September 21, 2026</title>
+      <description><![CDATA[Today's briefing features Edmonton local developments as Oilers defenceman Evan Bouchard addresses defensive play and residents gather for sustainable mending initiatives. Nationally and regionally, transit decisions progress in Calgary alongside shifting political dynamics in British Columbia. Internationally, major news organizations challenge White House press bans as geopolitical tensions rise in Germany and Yemen.]]></description>
+      <guid isPermaLink="false">podcow-edmonton-20260921</guid>
+      <pubDate>Mon, 21 Sep 2026 18:45:29 +0000</pubDate>
+      <enclosure url="https://github.com/SocialKidney/daily-news-podcast/releases/download/v20260921/podcast_20260921.mp3" length="2666736" type="audio/mpeg"/>
+      <itunes:duration>09:22</itunes:duration>
+      <itunes:explicit>no</itunes:explicit>
+      <itunes:author>Dr. Nikhil Shah</itunes:author>
+    </item>
+    
+    <item>
       <title>PodCow Daily News Edmonton: Sunday, September 20, 2026</title>
       <description><![CDATA[Protests erupted outside Rogers Place ahead of the Edmonton Oilers' home opener as fans voiced opposition to the roster addition of acquitted forward Alex Formenton. Across Alberta, Calgary city council prepares to finalize the Green Line downtown LRT route alongside construction detours near the Saddledome. Internationally, Ukraine launched a massive overnight drone barrage on Moscow, while German voters headed to the polls in a pivotal test for Chancellor Friedrich Merz.]]></description>
       <guid isPermaLink="false">podcow-edmonton-20260920</guid>
